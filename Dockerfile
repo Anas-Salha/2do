@@ -15,4 +15,5 @@ FROM scratch
 WORKDIR /app
 COPY migrations/ ./migrations/
 COPY --from=builder /2do ./2do
+EXPOSE 8080
 CMD ["/app/2do"]

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	database "github.com/anas-salha/2do/internal/database"
+	"github.com/anas-salha/2do/internal/database"
+	"github.com/anas-salha/2do/internal/router"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -31,4 +32,7 @@ func main() {
 	}
 
 	fmt.Println("Database migrations applied successfully.")
+
+	r := router.NewRouter(db)
+	r.Run("0.0.0.0:8080")
 }
