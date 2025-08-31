@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	database "github.com/anas-salha/2do/internal/database"
 
@@ -14,22 +15,19 @@ func main() {
 
 	db, err := database.GetDatabase()
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatal(err)
 	}
 
 	// Verify the connection
 	err = db.Ping()
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatal(err)
 	}
 	fmt.Println("Successfully connected to the database!")
 
 	err = database.RunMigrations(db)
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatal(err)
 	}
 
 	fmt.Println("Database migrations applied successfully.")
