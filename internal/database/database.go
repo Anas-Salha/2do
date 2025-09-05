@@ -2,9 +2,11 @@ package database
 
 import (
 	"fmt"
-	"os"
+	"log"
 
 	"database/sql"
+
+	"github.com/anas-salha/2do/internal/config"
 
 	_ "github.com/go-sql-driver/mysql"
 	migrate "github.com/golang-migrate/migrate/v4"
@@ -12,21 +14,22 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-func GetDatabase() (*sql.DB, error) {
-	// Load environment variables
-	db_name := os.Getenv("DB_NAME")
-	db_user := os.Getenv("DB_USER")
-	db_pass := os.Getenv("DB_PASS")
-	db_host := os.Getenv("DB_HOST")
-	db_port := os.Getenv("DB_PORT")
-	fmt.Printf("Database: %s, User: %s\n", db_name, db_user)
+func Open(cfg config.Config) (*sql.DB, error) {
+	// Construct DSN
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
 	// Connect to the database
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true", db_user, db_pass, db_host, db_port, db_name)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
 	}
+
+	// Verify the connection
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Successfully connected to the database!")
 
 	return db, nil
 }
@@ -51,5 +54,6 @@ func RunMigrations(db *sql.DB) error {
 		return err
 	}
 
+	log.Println("Database migrations applied successfully.")
 	return nil
 }

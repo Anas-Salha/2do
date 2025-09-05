@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/anas-salha/2do/internal/config"
 	"github.com/anas-salha/2do/internal/database"
 	"github.com/anas-salha/2do/internal/router"
 
@@ -14,24 +15,16 @@ import (
 func main() {
 	fmt.Println("2do - An overengineered TODO app")
 
-	db, err := database.GetDatabase()
+	cfg := config.Load()
+	db, err := database.Open(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Verify the connection
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Successfully connected to the database!")
 
 	err = database.RunMigrations(db)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Running migrations failed: %v", err)
 	}
-
-	fmt.Println("Database migrations applied successfully.")
 
 	r := router.NewRouter(db)
 	r.Run("0.0.0.0:8080")
