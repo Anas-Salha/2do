@@ -92,7 +92,7 @@ func getTodo(ctx *gin.Context, db *sql.DB) {
 }
 
 func postTodo(ctx *gin.Context, db *sql.DB) {
-	var newTodo TodoInserter
+	var newTodo TodoInput
 	if err := ctx.ShouldBindJSON(&newTodo); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -146,7 +146,7 @@ func postTodo(ctx *gin.Context, db *sql.DB) {
 }
 
 func updateTodo(ctx *gin.Context, db *sql.DB) {
-	var updatedTodo TodoInserter
+	var updatedTodo TodoInput
 	if err := ctx.ShouldBindJSON(&updatedTodo); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -10,7 +10,7 @@ type Todo struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type TodoInserter struct {
+type TodoInput struct {
 	Todo      *string `json:"todo"`
 	Completed *bool   `json:"completed"`
 }
