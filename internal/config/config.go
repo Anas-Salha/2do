@@ -11,6 +11,7 @@ type Config struct {
 	DBPassword string
 	DBHost     string
 	DBPort     string
+	HttpAddr   string
 }
 
 func Load() Config {
@@ -20,6 +21,7 @@ func Load() Config {
 		DBPassword: getEnv("DB_PASS"),
 		DBHost:     getEnv("DB_HOST"),
 		DBPort:     getEnv("DB_PORT"),
+		HttpAddr:   getEnvDefault("HTTP_ADDR", "0.0.0.0:8080"),
 	}
 }
 
@@ -27,6 +29,15 @@ func getEnv(k string) string {
 	v := os.Getenv(k)
 	if v == "" {
 		log.Fatalf("Environment variable %s not set.", k)
+	}
+
+	return v
+}
+
+func getEnvDefault(k string, d string) string {
+	v := os.Getenv(k)
+	if v == "" {
+		v = d
 	}
 
 	return v

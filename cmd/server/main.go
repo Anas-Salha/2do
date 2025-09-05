@@ -27,5 +27,5 @@ func main() {
 	}
 
 	r := router.NewRouter(db)
-	r.Run("0.0.0.0:8080")
+	r.Run(cfg.HttpAddr)
 }
