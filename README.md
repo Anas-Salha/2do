@@ -37,7 +37,9 @@ docker-compose up --build
 ```
 
 * Builds the app and any required services (e.g., database).
-* Access the API at `http://localhost:<port>`.
+* Access the API at `http://localhost:8080/`.
+
+**Note (Optional):** The API address is configurable. Set HTTP_ADDR in .env to control the binding inside the container, and adjust the ports mapping in docker-compose.yml to decide how it’s exposed on your host machine.
 
 ---
 
