@@ -9,7 +9,7 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 
 # Build the Go app
-RUN CGO_ENABLED=0 go build -o /2do ./cmd/server
+RUN CGO_ENABLED=0 go build -o /2do ./cmd/2do
 
 FROM scratch
 WORKDIR /app

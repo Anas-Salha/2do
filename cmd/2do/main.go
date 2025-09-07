@@ -6,7 +6,8 @@ import (
 
 	"github.com/anas-salha/2do/internal/config"
 	"github.com/anas-salha/2do/internal/database"
-	"github.com/anas-salha/2do/internal/router"
+	"github.com/anas-salha/2do/internal/http"
+	"github.com/anas-salha/2do/internal/todo"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -26,6 +27,9 @@ func main() {
 		log.Fatalf("Running migrations failed: %v", err)
 	}
 
-	r := router.NewRouter(db)
+	todoRepo := todo.NewRepo(db)
+	todoHandler := todo.NewHandler(todoRepo)
+
+	r := http.NewRouter(todoHandler)
 	r.Run(cfg.HttpAddr)
 }

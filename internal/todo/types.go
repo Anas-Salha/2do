@@ -1,9 +1,9 @@
-package router
+package todo
 
 import "time"
 
 type Todo struct {
-	ID        int32     `json:"id"`
+	ID        uint32    `json:"id"`
 	Todo      string    `json:"todo"`
 	Completed bool      `json:"completed"`
 	CreatedAt time.Time `json:"created_at"`
