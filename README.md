@@ -33,7 +33,7 @@ cp .env.example .env
 
 2. Start the app with Docker
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 * Builds the app and any required services (e.g., database).
