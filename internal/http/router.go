@@ -1,23 +1,16 @@
 package http
 
 import (
-	"context"
 	"time"
 
-	"github.com/anas-salha/2do/internal/todo"
 	"github.com/gin-gonic/gin"
 )
 
-func ContextTimeout(d time.Duration) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), d)
-		defer cancel()
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
-	}
+type registrable interface {
+	Register(gin.IRoutes)
 }
 
-func NewRouter(todoHandler *todo.Handler) *gin.Engine {
+func NewRouter(todoHandler registrable) *gin.Engine {
 	r := gin.Default()
 	r.Use(ContextTimeout(2 * time.Second))
 
