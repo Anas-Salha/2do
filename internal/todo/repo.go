@@ -9,6 +9,9 @@ import (
 
 const table = "todos"
 
+var ErrNotFound = errors.New("Not found")
+var ErrMissingFields = errors.New("Missing fields")
+
 type Repository interface {
 	List(ctx context.Context) ([]Todo, error)
 	Get(ctx context.Context, id uint32) (Todo, error)
@@ -60,7 +63,7 @@ func (r *SQLRepo) Get(ctx context.Context, id uint32) (Todo, error) {
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.Todo, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Todo{}, fmt.Errorf("Row not found id=%d: %v", id, err)
+		return Todo{}, fmt.Errorf("id %d: %w", id, ErrNotFound)
 	}
 	if err != nil {
 		return Todo{}, fmt.Errorf("Get todo id=%d: %v", id, err)
@@ -71,7 +74,7 @@ func (r *SQLRepo) Get(ctx context.Context, id uint32) (Todo, error) {
 
 func (r *SQLRepo) Create(ctx context.Context, in TodoInput) (uint32, error) {
 	if in.Todo == nil {
-		return 0, fmt.Errorf("Empty todo")
+		return 0, fmt.Errorf("Empty todo: %w", ErrMissingFields)
 	}
 
 	query := fmt.Sprintf("INSERT INTO `%s` (todo) VALUES ('%s')", table, *in.Todo)
@@ -99,7 +102,7 @@ func (r *SQLRepo) Create(ctx context.Context, in TodoInput) (uint32, error) {
 
 func (r *SQLRepo) Update(ctx context.Context, id uint32, in TodoInput) error {
 	if in.Todo == nil && in.Completed == nil {
-		return fmt.Errorf("No changes provided in input")
+		return fmt.Errorf("No changes provided in input: %w", ErrMissingFields)
 	}
 
 	query := fmt.Sprintf("UPDATE `%s` SET todo = IFNULL(?, todo), completed = IFNULL(?, completed) WHERE id=?", table)
@@ -113,7 +116,9 @@ func (r *SQLRepo) Update(ctx context.Context, id uint32, in TodoInput) error {
 	if err != nil {
 		return fmt.Errorf("Error reading affected rows: %v", err)
 	}
-	if rows != 1 {
+	if rows == 0 {
+		return fmt.Errorf("id %d: %w", id, ErrNotFound)
+	} else if rows != 1 {
 		return fmt.Errorf("Expected to affect 1 row, affected %d: %v", rows, err)
 	}
 
@@ -131,7 +136,9 @@ func (r *SQLRepo) Delete(ctx context.Context, id uint32) error {
 	if err != nil {
 		return fmt.Errorf("Error reading affected rows: %v", err)
 	}
-	if rows != 1 {
+	if rows == 0 {
+		return fmt.Errorf("id %d: %w", id, ErrNotFound)
+	} else if rows != 1 {
 		return fmt.Errorf("Expected to affect 1 row, affected %d: %v", rows, err)
 	}
 

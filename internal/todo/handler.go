@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -45,6 +46,10 @@ func (h *Handler) create(ctx *gin.Context) {
 	c := ctx.Request.Context()
 	id, err := h.repo.Create(c, newTodo)
 	if err != nil {
+		if errors.Is(err, ErrMissingFields) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -64,6 +69,10 @@ func (h *Handler) get(ctx *gin.Context) {
 	c := ctx.Request.Context()
 	todo, err := h.repo.Get(c, uint32(id))
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -89,6 +98,14 @@ func (h *Handler) update(ctx *gin.Context) {
 	c := ctx.Request.Context()
 	err = h.repo.Update(c, uint32(id), updatedTodo)
 	if err != nil {
+		if errors.Is(err, ErrMissingFields) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, ErrNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -107,9 +124,13 @@ func (h *Handler) delete(ctx *gin.Context) {
 	c := ctx.Request.Context()
 	err = h.repo.Delete(c, uint32(id))
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"deleted": true})
+	ctx.JSON(http.StatusNoContent, nil)
 }
