@@ -42,7 +42,7 @@ func (r *SQLRepo) List(ctx context.Context) ([]Todo, error) {
 	for rows.Next() {
 		var t Todo
 
-		if err := rows.Scan(&t.ID, &t.Todo, &t.Completed, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("Scan todo: %v", err)
 		}
 
@@ -57,11 +57,11 @@ func (r *SQLRepo) List(ctx context.Context) ([]Todo, error) {
 }
 
 func (r *SQLRepo) Get(ctx context.Context, id uint32) (Todo, error) {
-	query := fmt.Sprintf("SELECT id, todo, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
+	query := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
 
 	var t Todo
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.Todo, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Todo{}, fmt.Errorf("id %d: %w", id, ErrNotFound)
 	}
@@ -73,11 +73,11 @@ func (r *SQLRepo) Get(ctx context.Context, id uint32) (Todo, error) {
 }
 
 func (r *SQLRepo) Create(ctx context.Context, in TodoInput) (uint32, error) {
-	if in.Todo == nil {
-		return 0, fmt.Errorf("Empty todo: %w", ErrMissingFields)
+	if in.Text == nil {
+		return 0, fmt.Errorf("Empty text: %w", ErrMissingFields)
 	}
 
-	query := fmt.Sprintf("INSERT INTO `%s` (todo) VALUES ('%s')", table, *in.Todo)
+	query := fmt.Sprintf("INSERT INTO `%s` (text) VALUES ('%s')", table, *in.Text)
 
 	result, err := r.db.ExecContext(ctx, query)
 	if err != nil {
@@ -101,13 +101,13 @@ func (r *SQLRepo) Create(ctx context.Context, in TodoInput) (uint32, error) {
 }
 
 func (r *SQLRepo) Update(ctx context.Context, id uint32, in TodoInput) error {
-	if in.Todo == nil && in.Completed == nil {
+	if in.Text == nil && in.Completed == nil {
 		return fmt.Errorf("No changes provided in input: %w", ErrMissingFields)
 	}
 
-	query := fmt.Sprintf("UPDATE `%s` SET todo = IFNULL(?, todo), completed = IFNULL(?, completed) WHERE id=?", table)
+	query := fmt.Sprintf("UPDATE `%s` SET text = IFNULL(?, text), completed = IFNULL(?, completed) WHERE id=?", table)
 
-	result, err := r.db.ExecContext(ctx, query, in.Todo, in.Completed, id)
+	result, err := r.db.ExecContext(ctx, query, in.Text, in.Completed, id)
 	if err != nil {
 		return fmt.Errorf("Error updating row: %v", err)
 	}
