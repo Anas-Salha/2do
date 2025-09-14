@@ -11,7 +11,7 @@ type Config struct {
 	DBPassword string
 	DBHost     string
 	DBPort     string
-	HttpAddr   string
+	Port       string
 }
 
 func Load() Config {
@@ -21,7 +21,7 @@ func Load() Config {
 		DBPassword: getEnv("DB_PASS"),
 		DBHost:     getEnv("DB_HOST"),
 		DBPort:     getEnv("DB_PORT"),
-		HttpAddr:   getEnvDefault("HTTP_ADDR", "0.0.0.0:8080"),
+		Port:       getEnvDefault("PORT", "8080"),
 	}
 }
 
