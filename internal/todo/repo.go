@@ -9,46 +9,39 @@ import (
 
 const table = "todos"
 
-var ErrNotFound = errors.New("Not found")
-var ErrMissingFields = errors.New("Missing fields")
-
 type Repository interface {
 	List(ctx context.Context) ([]Todo, error)
 	Get(ctx context.Context, id uint32) (Todo, error)
-	Create(ctx context.Context, in TodoInput) (uint32, error)
-	Update(ctx context.Context, id uint32, in TodoInput) error
+	Create(ctx context.Context, in TodoInput) (Todo, error)
+	Update(ctx context.Context, id uint32, in TodoInput) (Todo, error)
 	Delete(ctx context.Context, id uint32) error
 }
 
-type SQLRepo struct {
+type sqlrepo struct {
 	db *sql.DB
 }
 
-func NewRepo(db *sql.DB) *SQLRepo {
-	return &SQLRepo{db: db}
+func NewRepo(db *sql.DB) Repository {
+	return &sqlrepo{db: db}
 }
 
-func (r *SQLRepo) List(ctx context.Context) ([]Todo, error) {
+func (r *sqlrepo) List(ctx context.Context) ([]Todo, error) {
 	query := fmt.Sprintf("SELECT * FROM `%s`", table)
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("List todos: %v", err)
+		return nil, err
 	}
 	defer rows.Close()
 
 	todos := []Todo{}
-
 	for rows.Next() {
 		var t Todo
-
 		if err := rows.Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("Scan todo: %v", err)
+			return nil, err
 		}
-
 		todos = append(todos, t)
 	}
-
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -56,90 +49,87 @@ func (r *SQLRepo) List(ctx context.Context) ([]Todo, error) {
 	return todos, nil
 }
 
-func (r *SQLRepo) Get(ctx context.Context, id uint32) (Todo, error) {
+func (r *sqlrepo) Get(ctx context.Context, id uint32) (Todo, error) {
 	query := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
 
 	var t Todo
-
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Todo{}, fmt.Errorf("id %d: %w", id, ErrNotFound)
-	}
 	if err != nil {
-		return Todo{}, fmt.Errorf("Get todo id=%d: %v", id, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return Todo{}, ErrNotFound
+		}
+		return Todo{}, err
 	}
 
 	return t, nil
 }
 
-func (r *SQLRepo) Create(ctx context.Context, in TodoInput) (uint32, error) {
-	if in.Text == nil {
-		return 0, fmt.Errorf("Empty text: %w", ErrMissingFields)
-	}
-
+func (r *sqlrepo) Create(ctx context.Context, in TodoInput) (Todo, error) {
 	query := fmt.Sprintf("INSERT INTO `%s` (text) VALUES ('%s')", table, *in.Text)
 
 	result, err := r.db.ExecContext(ctx, query)
 	if err != nil {
-		return 0, fmt.Errorf("Error inserting row: %v", err)
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("Error reading affected rows: %v", err)
-	}
-	if rows != 1 {
-		return 0, fmt.Errorf("Expected to affect 1 row, affected %d: %v", rows, err)
+		return Todo{}, err
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("Error fetching ID of inserted row: %v", err)
+		return Todo{}, err
 	}
 
-	return uint32(id), nil
+	var t Todo
+	getQuery := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
+	err = r.db.QueryRowContext(ctx, getQuery, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		return Todo{}, err
+	}
+
+	return t, nil
 }
 
-func (r *SQLRepo) Update(ctx context.Context, id uint32, in TodoInput) error {
-	if in.Text == nil && in.Completed == nil {
-		return fmt.Errorf("No changes provided in input: %w", ErrMissingFields)
-	}
-
+func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (Todo, error) {
 	query := fmt.Sprintf("UPDATE `%s` SET text = IFNULL(?, text), completed = IFNULL(?, completed) WHERE id=?", table)
 
 	result, err := r.db.ExecContext(ctx, query, in.Text, in.Completed, id)
 	if err != nil {
-		return fmt.Errorf("Error updating row: %v", err)
+		return Todo{}, err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("Error reading affected rows: %v", err)
+		return Todo{}, err
 	}
 	if rows == 0 {
-		return fmt.Errorf("id %d: %w", id, ErrNotFound)
+		return Todo{}, ErrNotFound
 	} else if rows != 1 {
-		return fmt.Errorf("Expected to affect 1 row, affected %d: %v", rows, err)
+		return Todo{}, err
 	}
 
-	return nil
+	var t Todo
+	getQuery := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
+	err = r.db.QueryRowContext(ctx, getQuery, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		return Todo{}, err
+	}
+
+	return t, nil
 }
 
-func (r *SQLRepo) Delete(ctx context.Context, id uint32) error {
+func (r *sqlrepo) Delete(ctx context.Context, id uint32) error {
 	query := fmt.Sprintf("DELETE FROM `%s` WHERE id=?", table)
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("Error deleting row: %v", err)
+		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("Error reading affected rows: %v", err)
+		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("id %d: %w", id, ErrNotFound)
+		return ErrNotFound
 	} else if rows != 1 {
-		return fmt.Errorf("Expected to affect 1 row, affected %d: %v", rows, err)
+		return err
 	}
 
 	return nil

@@ -28,7 +28,8 @@ func main() {
 	}
 
 	todoRepo := todo.NewRepo(db)
-	todoHandler := todo.NewHandler(todoRepo)
+	todoService := todo.NewService(todoRepo)
+	todoHandler := todo.NewHandler(todoService)
 
 	r := http.NewRouter(todoHandler)
 

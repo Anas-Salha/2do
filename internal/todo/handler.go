@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Handler struct{ repo Repository }
+type Handler struct{ svc Service }
 
-func NewHandler(r Repository) *Handler {
-	return &Handler{repo: r}
+func NewHandler(s Service) *Handler {
+	return &Handler{svc: s}
 }
 
 func (h *Handler) Register(r gin.IRoutes) {
@@ -26,9 +26,9 @@ func (h *Handler) Register(r gin.IRoutes) {
 func (h *Handler) getAll(ctx *gin.Context) {
 	c := ctx.Request.Context()
 
-	todos, err := h.repo.List(c)
+	todos, err := h.svc.GetAll(c)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
 		return
 	}
 
@@ -39,66 +39,66 @@ func (h *Handler) getById(ctx *gin.Context) {
 	i := ctx.Param("id")
 	id, err := strconv.Atoi(i)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
 		return
 	}
 
 	c := ctx.Request.Context()
-	todo, err := h.repo.Get(c, uint32(id))
+	t, err := h.svc.GetById(c, uint32(id))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, todo)
+	ctx.JSON(http.StatusOK, t)
 }
 
 func (h *Handler) post(ctx *gin.Context) {
 	var newTodo TodoInput
 	err := ctx.ShouldBindJSON(&newTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
 
 	c := ctx.Request.Context()
-	id, err := h.repo.Create(c, newTodo)
+	t, err := h.svc.Create(c, newTodo)
 	if err != nil {
-		if errors.Is(err, ErrMissingFields) {
+		if errors.Is(err, ErrInputInvalid) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
 		return
 	}
 
-	ctx.Header("Location", fmt.Sprintf("/todo/%d", id))
-	ctx.JSON(http.StatusCreated, gin.H{"created": true})
+	ctx.Header("Location", fmt.Sprintf("/todos/%d", t.ID))
+	ctx.JSON(http.StatusCreated, t)
 }
 
 func (h *Handler) put(ctx *gin.Context) {
 	var updatedTodo TodoInput
 	err := ctx.ShouldBindJSON(&updatedTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
 
 	i := ctx.Param("id")
 	id, err := strconv.Atoi(i)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
 		return
 	}
 
 	c := ctx.Request.Context()
-	err = h.repo.Update(c, uint32(id), updatedTodo)
+	t, err := h.svc.Update(c, uint32(id), updatedTodo)
 	if err != nil {
-		if errors.Is(err, ErrMissingFields) {
+		if errors.Is(err, ErrInputInvalid) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -106,29 +106,29 @@ func (h *Handler) put(ctx *gin.Context) {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"updated": true})
+	ctx.JSON(http.StatusOK, t)
 }
 
 func (h *Handler) delete(ctx *gin.Context) {
 	i := ctx.Param("id")
 	id, err := strconv.Atoi(i)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
 		return
 	}
 
 	c := ctx.Request.Context()
-	err = h.repo.Delete(c, uint32(id))
+	err = h.svc.Delete(c, uint32(id))
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
 		return
 	}
 
