@@ -31,7 +31,7 @@ func main() {
 	todoService := todo.NewService(todoRepo)
 	todoHandler := todo.NewHandler(todoService)
 
-	r := http.NewRouter(todoHandler)
+	r := http.NewRouter(todoHandler, cfg.AllowedOrigins)
 
 	r.Run("0.0.0.0:" + cfg.Port)
 }
