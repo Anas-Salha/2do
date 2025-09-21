@@ -1,27 +1,13 @@
 # 2do
 
-**An over-engineered todo app**
-
----
-
-## Overview
-
-**2do** is a todo list application built with Go, designed with a more elaborate architecture than typically necessary—hence the "over-engineered" moniker. It uses MySQL as its database backend and serves as a showcase for Go back-end development, Docker containerization, and database migrations.
-
----
-
-## Features
-
-- RESTful API for managing todo items
-- Docker support for easy setup with `Dockerfile` and `docker-compose.yml`
-- Database migrations included for schema versioning
+**An over-engineered todo app backend**
 
 ---
 
 ## Prerequisites
 
-- [Go](https://golang.org/) (recent stable version)
-- [Docker](https://www.docker.com/) and Docker Compose (optional but recommended)
+- [Go](https://golang.org/)
+- [Docker](https://www.docker.com/) and Docker Compose
 
 ---
 
@@ -36,19 +22,19 @@ cp .env.example .env
 docker compose up --build
 ```
 
-* Builds the app and any required services (e.g., database).
-* Access the API at `http://localhost:8080/`.
+3. Use curl (in terminal) or Swagger UI to try out API calls
+
+* Access the API at `http://localhost:8080/`
+* Access Swagger UI at `http://localhost:8081/`
+
 
 **Note (Optional):** The API port is configurable. Set PORT in .env to control the binding inside the container, and adjust the ports mapping in docker-compose.yml to decide how it’s exposed on your host machine.
 
 ---
 
-## Usage
+## REST API
+**Documentation:** https://anas-salha.github.io/2do/
 
-Interact with the todo API endpoints (e.g., via `curl` or Postman):
+- OpenAPI schema: [`openapi.yaml`](./docs/openapi.yaml)
 
-* `GET /api/v0/todos` — list all todos
-* `POST /api/v0/todos` — create a new todo
-* `GET /api/v0/todos/{id}` — retrieve a specific todo
-* `PUT /api/v0/todos/{id}` — update a todo
-* `DELETE /api/v0/todos/{id}` — delete a todo
+**Note:** Server responses may not match documentation as of now. Implemention is WIP.
