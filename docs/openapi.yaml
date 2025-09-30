@@ -229,7 +229,7 @@ components:
         message:
           type: string
           example: "Path parameter 'id' must be an integer"
-      required: [error, message]
+      required: [error]
 
   responses:
     BadRequest:
