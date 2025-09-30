@@ -11,9 +11,9 @@ const table = "todos"
 
 type Repository interface {
 	List(ctx context.Context) ([]Todo, error)
-	Get(ctx context.Context, id uint32) (Todo, error)
-	Create(ctx context.Context, in TodoInput) (Todo, error)
-	Update(ctx context.Context, id uint32, in TodoInput) (Todo, error)
+	Get(ctx context.Context, id uint32) (*Todo, error)
+	Create(ctx context.Context, in TodoInput) (*Todo, error)
+	Update(ctx context.Context, id uint32, in TodoInput) (*Todo, error)
 	Delete(ctx context.Context, id uint32) error
 }
 
@@ -49,70 +49,70 @@ func (r *sqlrepo) List(ctx context.Context) ([]Todo, error) {
 	return todos, nil
 }
 
-func (r *sqlrepo) Get(ctx context.Context, id uint32) (Todo, error) {
+func (r *sqlrepo) Get(ctx context.Context, id uint32) (*Todo, error) {
 	query := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
 
 	var t Todo
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Todo{}, ErrNotFound
+			return nil, ErrNotFound
 		}
-		return Todo{}, err
+		return nil, err
 	}
 
-	return t, nil
+	return &t, nil
 }
 
-func (r *sqlrepo) Create(ctx context.Context, in TodoInput) (Todo, error) {
+func (r *sqlrepo) Create(ctx context.Context, in TodoInput) (*Todo, error) {
 	query := fmt.Sprintf("INSERT INTO `%s` (text) VALUES ('%s')", table, *in.Text)
 
 	result, err := r.db.ExecContext(ctx, query)
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 
 	var t Todo
 	getQuery := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
 	err = r.db.QueryRowContext(ctx, getQuery, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 
-	return t, nil
+	return &t, nil
 }
 
-func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (Todo, error) {
+func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, error) {
 	query := fmt.Sprintf("UPDATE `%s` SET text = IFNULL(?, text), completed = IFNULL(?, completed) WHERE id=?", table)
 
 	result, err := r.db.ExecContext(ctx, query, in.Text, in.Completed, id)
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 	if rows == 0 {
-		return Todo{}, ErrNotFound
+		return nil, ErrNotFound
 	} else if rows != 1 {
-		return Todo{}, err
+		return nil, err
 	}
 
 	var t Todo
 	getQuery := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
 	err = r.db.QueryRowContext(ctx, getQuery, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 
-	return t, nil
+	return &t, nil
 }
 
 func (r *sqlrepo) Delete(ctx context.Context, id uint32) error {

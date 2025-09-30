@@ -8,9 +8,9 @@ import (
 
 type Service interface {
 	GetAll(ctx context.Context) ([]Todo, error)
-	GetById(ctx context.Context, id uint32) (Todo, error)
-	Create(ctx context.Context, in TodoInput) (Todo, error)
-	Update(ctx context.Context, id uint32, in TodoInput) (Todo, error)
+	GetById(ctx context.Context, id uint32) (*Todo, error)
+	Create(ctx context.Context, in TodoInput) (*Todo, error)
+	Update(ctx context.Context, id uint32, in TodoInput) (*Todo, error)
 	Delete(ctx context.Context, id uint32) error
 }
 
@@ -31,42 +31,42 @@ func (s *service) GetAll(ctx context.Context) ([]Todo, error) {
 	return todos, nil
 }
 
-func (s *service) GetById(ctx context.Context, id uint32) (Todo, error) {
+func (s *service) GetById(ctx context.Context, id uint32) (*Todo, error) {
 	t, err := s.repo.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return Todo{}, fmt.Errorf("%w: id: %d", ErrNotFound, id)
+			return nil, fmt.Errorf("%w: id: %d", ErrNotFound, id)
 		}
-		return Todo{}, err
+		return nil, err
 	}
 
 	return t, nil
 }
 
-func (s *service) Create(ctx context.Context, in TodoInput) (Todo, error) {
+func (s *service) Create(ctx context.Context, in TodoInput) (*Todo, error) {
 	if in.Text == nil {
-		return Todo{}, fmt.Errorf("%w: text field missing", ErrInputInvalid)
+		return nil, fmt.Errorf("%w: text field missing", ErrInputInvalid)
 	}
 
 	t, err := s.repo.Create(ctx, in)
 	if err != nil {
-		return Todo{}, err
+		return nil, err
 	}
 
 	return t, nil
 }
 
-func (s *service) Update(ctx context.Context, id uint32, in TodoInput) (Todo, error) {
+func (s *service) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, error) {
 	if in.Text == nil && in.Completed == nil {
-		return Todo{}, fmt.Errorf("%w: text and completed fields missing - provide at least one.", ErrInputInvalid)
+		return nil, fmt.Errorf("%w: text and completed fields missing - provide at least one.", ErrInputInvalid)
 	}
 
 	t, err := s.repo.Update(ctx, id, in)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return Todo{}, fmt.Errorf("%w: id: %d", ErrNotFound, id)
+			return nil, fmt.Errorf("%w: id: %d", ErrNotFound, id)
 		}
-		return Todo{}, err
+		return nil, err
 	}
 
 	return t, nil
