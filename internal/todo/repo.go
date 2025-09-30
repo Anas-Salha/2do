@@ -26,7 +26,7 @@ func NewRepo(db *sql.DB) Repository {
 }
 
 func (r *sqlrepo) List(ctx context.Context) ([]Todo, error) {
-	query := fmt.Sprintf("SELECT * FROM `%s`", table)
+	query := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s`", table)
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
