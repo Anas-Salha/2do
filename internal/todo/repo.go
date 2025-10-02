@@ -129,7 +129,7 @@ func (r *sqlrepo) Delete(ctx context.Context, id uint32) error {
 	if rows == 0 {
 		return ErrNotFound
 	} else if rows != 1 {
-		return err
+		return ErrMultipleRowsAffected
 	}
 
 	return nil
