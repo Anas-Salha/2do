@@ -4,13 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/anas-salha/2do/internal/todo"
+	. "github.com/anas-salha/2do/internal/todo"
 )
 
 var _ = Describe("repo", func() {
@@ -18,7 +20,9 @@ var _ = Describe("repo", func() {
 		ctx  context.Context
 		db   *sql.DB
 		mock sqlmock.Sqlmock
-		repo todo.Repository
+		repo Repository
+		now  time.Time
+		rows *sqlmock.Rows
 	)
 
 	BeforeEach(func() {
@@ -26,7 +30,9 @@ var _ = Describe("repo", func() {
 		ctx = context.Background()
 		db, mock, err = sqlmock.New()
 		Expect(err).NotTo(HaveOccurred())
-		repo = todo.NewRepo(db)
+		repo = NewRepo(db)
+		now = time.Now().UTC().Truncate(time.Second)
+		rows = sqlmock.NewRows([]string{"id", "text", "completed", "created_at", "updated_at"})
 	})
 
 	AfterEach(func() {
@@ -36,15 +42,9 @@ var _ = Describe("repo", func() {
 	})
 
 	Describe("List", Label("list"), func() {
-		var (
-			now   time.Time
-			rows  *sqlmock.Rows
-			query string
-		)
+		var query string
 
 		BeforeEach(func() {
-			now = time.Now().UTC().Truncate(time.Second)
-			rows = sqlmock.NewRows([]string{"id", "text", "completed", "created_at", "updated_at"})
 			query = "SELECT id, text, completed, created_at, updated_at FROM `todos`"
 		})
 
@@ -102,6 +102,115 @@ var _ = Describe("repo", func() {
 			todos, err := repo.List(ctx)
 			Expect(err).To(MatchError("row iteration error"))
 			Expect(todos).To(BeNil())
+		})
+	})
+
+	Describe("Get", Label("get"), func() {
+		var query string
+
+		BeforeEach(func() {
+			query = "SELECT id, text, completed, created_at, updated_at FROM `todos` WHERE id=?"
+		})
+
+		It("get todo successfully", func() {
+			rows = rows.
+				AddRow(1, "walk the dog", false, now, now)
+			mock.ExpectQuery(query).WillReturnRows(rows)
+
+			todo, err := repo.Get(ctx, 1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(todo.Text).To(Equal("walk the dog"))
+			Expect(todo.Completed).To(BeFalse())
+		})
+
+		It("propagates query errors", func() {
+			expected := errors.New("get failed")
+			mock.ExpectQuery(query).WillReturnError(expected)
+
+			todo, err := repo.Get(ctx, 1)
+			Expect(err).To(MatchError(expected))
+			Expect(todo).To(BeNil())
+		})
+
+		It("returns todo not found errors", func() {
+			mock.ExpectQuery(query).WillReturnError(sql.ErrNoRows)
+
+			todo, err := repo.Get(ctx, 1)
+			Expect(err).To(MatchError(ErrNotFound))
+			Expect(todo).To(BeNil())
+		})
+	})
+
+	Describe("Create", Label("create"), func() {
+		var (
+			query    string
+			getQuery string
+		)
+
+		BeforeEach(func() {
+			query = "INSERT INTO `todos` (text) VALUES ('%s')"
+			getQuery = "SELECT id, text, completed, created_at, updated_at FROM `todos` WHERE id=?"
+		})
+
+		It("creates and returns a todo successfully", func() {
+			text := "hit the gym"
+			input := TodoInput{Text: &text}
+
+			query = fmt.Sprintf(query, text)
+			lastInsertId := int64(3)
+			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(lastInsertId, 1))
+
+			rows = rows.AddRow(lastInsertId, text, false, now, now)
+			mock.ExpectQuery(getQuery).WillReturnRows(rows)
+
+			todo, err := repo.Create(ctx, input)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(todo).NotTo(BeNil())
+			Expect(todo.ID).To(BeEquivalentTo(lastInsertId))
+			Expect(todo.Text).To(Equal(text))
+			Expect(todo.Completed).To(BeFalse())
+		})
+
+		It("propagates insert errors", func() {
+			text := "dummy todo"
+			input := TodoInput{Text: &text}
+
+			query = fmt.Sprintf(query, text)
+			expected := errors.New("insert failed")
+			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnError(expected)
+
+			todo, err := repo.Create(ctx, input)
+			Expect(err).To(MatchError(expected))
+			Expect(todo).To(BeNil())
+		})
+
+		It("propagates error from LastInsertId", func() {
+			text := "dummy todo"
+			input := TodoInput{Text: &text}
+
+			query = fmt.Sprintf(query, text)
+			expected := errors.New("lastInsertId failed")
+			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewErrorResult(expected))
+
+			todo, err := repo.Create(ctx, input)
+			Expect(err).To(MatchError(expected))
+			Expect(todo).To(BeNil())
+		})
+
+		It("propagates get errors", func() {
+			text := "dummy todo"
+			input := TodoInput{Text: &text}
+
+			query = fmt.Sprintf(query, text)
+			lastInsertId := int64(3)
+			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(lastInsertId, 1))
+
+			expected := errors.New("get failed")
+			mock.ExpectQuery(getQuery).WillReturnError(expected)
+
+			todo, err := repo.Create(ctx, input)
+			Expect(err).To(MatchError(expected))
+			Expect(todo).To(BeNil())
 		})
 	})
 })
