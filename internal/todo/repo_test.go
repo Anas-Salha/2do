@@ -113,11 +113,12 @@ var _ = Describe("repo", func() {
 		})
 
 		It("get todo successfully", func() {
+			id := uint32(1)
 			rows = rows.
-				AddRow(1, "walk the dog", false, now, now)
+				AddRow(id, "walk the dog", false, now, now)
 			mock.ExpectQuery(query).WillReturnRows(rows)
 
-			todo, err := repo.Get(ctx, 1)
+			todo, err := repo.Get(ctx, id)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(todo.Text).To(Equal("walk the dog"))
 			Expect(todo.Completed).To(BeFalse())
