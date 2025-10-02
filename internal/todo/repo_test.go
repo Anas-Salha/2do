@@ -214,4 +214,42 @@ var _ = Describe("repo", func() {
 			Expect(todo).To(BeNil())
 		})
 	})
+
+	Describe("Delete", Label("delete"), func() {
+		var query string
+
+		BeforeEach(func() {
+			query = "DELETE FROM `todos` WHERE id=?"
+		})
+
+		It("deletes todo successfully", func() {
+			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err := repo.Delete(ctx, 1)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("propagates delete errors", func() {
+			expected := errors.New("insert failed")
+			mock.ExpectExec(query).WillReturnError(expected)
+
+			err := repo.Delete(ctx, 1)
+			Expect(err).To(MatchError(expected))
+		})
+
+		It("returns todo not found error if no rows affected", func() {
+			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 0))
+
+			err := repo.Delete(ctx, 1)
+			Expect(err).To(MatchError(ErrNotFound))
+		})
+
+		It("propagates error if multiple rows affected", func() {
+			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 3))
+
+			err := repo.Delete(ctx, 1)
+			Expect(err).To(MatchError(ErrMultipleRowsAffected))
+		})
+
+	})
 })
