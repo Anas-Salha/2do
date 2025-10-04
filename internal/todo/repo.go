@@ -102,7 +102,7 @@ func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, e
 	if rows == 0 {
 		return nil, ErrNotFound
 	} else if rows != 1 {
-		return nil, err
+		return nil, ErrMultipleRowsAffected
 	}
 
 	var t Todo
