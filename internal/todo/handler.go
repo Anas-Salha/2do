@@ -81,17 +81,17 @@ func (h *Handler) post(ctx *gin.Context) {
 }
 
 func (h *Handler) put(ctx *gin.Context) {
-	var updatedTodo TodoInput
-	err := ctx.ShouldBindJSON(&updatedTodo)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
-		return
-	}
-
 	i := ctx.Param("id")
 	id, err := strconv.Atoi(i)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
+		return
+	}
+
+	var updatedTodo TodoInput
+	err = ctx.ShouldBindJSON(&updatedTodo)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
 

@@ -15,7 +15,7 @@ import (
 	. "github.com/anas-salha/2do/internal/todo"
 )
 
-var _ = Describe("repo", func() {
+var _ = Describe("repo", Label("repo"), func() {
 	var (
 		ctx  context.Context
 		db   *sql.DB
