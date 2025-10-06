@@ -58,6 +58,11 @@ func (h *Handler) getById(ctx *gin.Context) {
 }
 
 func (h *Handler) post(ctx *gin.Context) {
+	if ctx.ContentType() != "application/json" {
+		ctx.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Content-Type must be application/json"})
+		return
+	}
+
 	var newTodo TodoInput
 	err := ctx.ShouldBindJSON(&newTodo)
 	if err != nil {
@@ -65,11 +70,16 @@ func (h *Handler) post(ctx *gin.Context) {
 		return
 	}
 
+	if newTodo.Completed == nil {
+		val := false
+		newTodo.Completed = &val
+	}
+
 	c := ctx.Request.Context()
 	t, err := h.svc.Create(c, newTodo)
 	if err != nil {
 		if errors.Is(err, ErrInputInvalid) {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 			return
 		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
@@ -81,6 +91,11 @@ func (h *Handler) post(ctx *gin.Context) {
 }
 
 func (h *Handler) put(ctx *gin.Context) {
+	if ctx.ContentType() != "application/json" {
+		ctx.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Content-Type must be application/json"})
+		return
+	}
+
 	i := ctx.Param("id")
 	id, err := strconv.Atoi(i)
 	if err != nil {
@@ -95,11 +110,16 @@ func (h *Handler) put(ctx *gin.Context) {
 		return
 	}
 
+	if updatedTodo.Text == nil || updatedTodo.Completed == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing field"})
+		return
+	}
+
 	c := ctx.Request.Context()
 	t, err := h.svc.Update(c, uint32(id), updatedTodo)
 	if err != nil {
 		if errors.Is(err, ErrInputInvalid) {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 			return
 		}
 		if errors.Is(err, ErrNotFound) {

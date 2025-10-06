@@ -150,11 +150,13 @@ var _ = Describe("handler", Label("handler"), func() {
 	})
 
 	Describe("POST /todos", Label("post"), func() {
-		It("Verifies happy path", func() {
+		It("Verifies happy path - default completed status", func() {
 			svc.createFn = func(ctx context.Context, in TodoInput) (*Todo, error) {
 				Expect(in.Text).NotTo(BeNil())
 				Expect(*in.Text).To(Equal("stretch"))
-				return &Todo{ID: 7, Text: "stretch"}, nil
+				Expect(in.Completed).NotTo(BeNil())
+				Expect(*in.Completed).To(BeFalse())
+				return &Todo{ID: 7, Text: "stretch", Completed: false}, nil
 			}
 
 			payload := "{\"text\":\"stretch\"}"
@@ -164,6 +166,26 @@ var _ = Describe("handler", Label("handler"), func() {
 
 			Expect(rr.Code).To(Equal(http.StatusCreated))
 			Expect(rr.Header().Get("Location")).To(Equal("/todos/7"))
+			Expect(rr.Body.String()).To(ContainSubstring(`"id":7,"text":"stretch","completed":false`))
+		})
+
+		It("Verifies happy path - provided completed status", func() {
+			svc.createFn = func(ctx context.Context, in TodoInput) (*Todo, error) {
+				Expect(in.Text).NotTo(BeNil())
+				Expect(*in.Text).To(Equal("stretch"))
+				Expect(in.Completed).NotTo(BeNil())
+				Expect(*in.Completed).To(BeTrue())
+				return &Todo{ID: 7, Text: "stretch", Completed: true}, nil
+			}
+
+			payload := "{\"text\":\"stretch\",\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusCreated))
+			Expect(rr.Header().Get("Location")).To(Equal("/todos/7"))
+			Expect(rr.Body.String()).To(ContainSubstring(`"id":7,"text":"stretch","completed":true`))
 		})
 
 		It("Reports bad request for invalid JSON", func() {
@@ -176,6 +198,16 @@ var _ = Describe("handler", Label("handler"), func() {
 			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
 		})
 
+		It("Reports error unsupported media type", func() {
+			payload := "{\"text\":\"water the plants\"}"
+			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/octal-stream")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusUnsupportedMediaType))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"Content-Type must be application/json"}`))
+		})
+
 		It("Propagates error input invalid", func() {
 			svc.createFn = func(ctx context.Context, in TodoInput) (*Todo, error) { return nil, ErrInputInvalid }
 
@@ -184,7 +216,7 @@ var _ = Describe("handler", Label("handler"), func() {
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(rr, req)
 
-			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Code).To(Equal(http.StatusUnprocessableEntity))
 			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo input invalid"}`))
 		})
 
@@ -214,7 +246,6 @@ var _ = Describe("handler", Label("handler"), func() {
 			}
 
 			payload := "{\"text\":\"call mom\",\"completed\":true}"
-			rr := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPut, "/todos/12", strings.NewReader(payload))
 			req.Header.Set("Content-Type", "application/json")
 
@@ -225,6 +256,7 @@ var _ = Describe("handler", Label("handler"), func() {
 
 		It("Reports bad request for invalid ID type", func() {
 			req := httptest.NewRequest(http.MethodPut, "/todos/x", nil)
+			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
@@ -232,13 +264,33 @@ var _ = Describe("handler", Label("handler"), func() {
 		})
 
 		It("Reports bad request for invalid JSON", func() {
-			payload := "{\"text\":true}"
+			payload := "{\"text\":true,\"completed\":true}"
 			req := httptest.NewRequest(http.MethodPut, "/todos/3", strings.NewReader(payload))
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
 			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
+		})
+
+		It("Reports bad request for missing field", func() {
+			payload := "{\"text\":\"call mom\"}"
+			req := httptest.NewRequest(http.MethodPut, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"missing field"}`))
+		})
+
+		It("Reports error unsupported media type", func() {
+			payload := "{\"text\":\"water the plants\",\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPut, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/octal-stream")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusUnsupportedMediaType))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"Content-Type must be application/json"}`))
 		})
 
 		It("Propagates error not found when ID doesn't exist", func() {
@@ -254,12 +306,12 @@ var _ = Describe("handler", Label("handler"), func() {
 
 		It("Propagates error input invalid", func() {
 			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrInputInvalid }
-			payload := "{\"text\":\"\"}"
+			payload := "{\"text\":\"\", \"completed\":true}"
 			req := httptest.NewRequest(http.MethodPut, "/todos/3", strings.NewReader(payload))
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(rr, req)
 
-			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Code).To(Equal(http.StatusUnprocessableEntity))
 			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo input invalid"}`))
 		})
 
@@ -284,9 +336,7 @@ var _ = Describe("handler", Label("handler"), func() {
 				return nil
 			}
 
-			rr := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodDelete, "/todos/5", nil)
-
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusNoContent))
