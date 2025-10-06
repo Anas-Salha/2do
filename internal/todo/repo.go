@@ -65,9 +65,9 @@ func (r *sqlrepo) Get(ctx context.Context, id uint32) (*Todo, error) {
 }
 
 func (r *sqlrepo) Create(ctx context.Context, in TodoInput) (*Todo, error) {
-	query := fmt.Sprintf("INSERT INTO `%s` (text) VALUES ('%s')", table, *in.Text)
+	query := fmt.Sprintf("INSERT INTO `%s` (text, completed) VALUES (?, ?)", table)
 
-	result, err := r.db.ExecContext(ctx, query)
+	result, err := r.db.ExecContext(ctx, query, in.Text, in.Completed)
 	if err != nil {
 		return nil, err
 	}

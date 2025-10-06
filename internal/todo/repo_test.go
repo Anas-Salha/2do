@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"regexp"
 	"time"
 
@@ -149,19 +148,21 @@ var _ = Describe("repo", Label("repo"), func() {
 		)
 
 		BeforeEach(func() {
-			query = "INSERT INTO `todos` (text) VALUES ('%s')"
+			query = "INSERT INTO `todos` (text, completed) VALUES (?, ?)"
 			getQuery = "SELECT id, text, completed, created_at, updated_at FROM `todos` WHERE id=?"
 		})
 
 		It("creates and returns a todo successfully", func() {
 			text := "hit the gym"
-			input := TodoInput{Text: &text}
+			completed := true
+			input := TodoInput{Text: &text, Completed: &completed}
 
-			query = fmt.Sprintf(query, text)
 			lastInsertId := int64(3)
-			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(lastInsertId, 1))
+			mock.ExpectExec(regexp.QuoteMeta(query)).
+				WithArgs(&text, &completed).
+				WillReturnResult(sqlmock.NewResult(lastInsertId, 1))
 
-			rows = rows.AddRow(lastInsertId, text, false, now, now)
+			rows = rows.AddRow(lastInsertId, text, true, now, now)
 			mock.ExpectQuery(getQuery).WillReturnRows(rows)
 
 			todo, err := repo.Create(ctx, input)
@@ -169,16 +170,18 @@ var _ = Describe("repo", Label("repo"), func() {
 			Expect(todo).NotTo(BeNil())
 			Expect(todo.ID).To(BeEquivalentTo(lastInsertId))
 			Expect(todo.Text).To(Equal(text))
-			Expect(todo.Completed).To(BeFalse())
+			Expect(todo.Completed).To(BeTrue())
 		})
 
 		It("propagates insert errors", func() {
 			text := "dummy todo"
-			input := TodoInput{Text: &text}
+			completed := false
+			input := TodoInput{Text: &text, Completed: &completed}
 
-			query = fmt.Sprintf(query, text)
 			expected := errors.New("insert failed")
-			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnError(expected)
+			mock.ExpectExec(regexp.QuoteMeta(query)).
+				WithArgs(&text, &completed).
+				WillReturnError(expected)
 
 			todo, err := repo.Create(ctx, input)
 			Expect(err).To(MatchError(expected))
@@ -187,11 +190,13 @@ var _ = Describe("repo", Label("repo"), func() {
 
 		It("propagates error from LastInsertId", func() {
 			text := "dummy todo"
-			input := TodoInput{Text: &text}
+			completed := false
+			input := TodoInput{Text: &text, Completed: &completed}
 
-			query = fmt.Sprintf(query, text)
 			expected := errors.New("lastInsertId failed")
-			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewErrorResult(expected))
+			mock.ExpectExec(regexp.QuoteMeta(query)).
+				WithArgs(&text, &completed).
+				WillReturnResult(sqlmock.NewErrorResult(expected))
 
 			todo, err := repo.Create(ctx, input)
 			Expect(err).To(MatchError(expected))
@@ -200,11 +205,13 @@ var _ = Describe("repo", Label("repo"), func() {
 
 		It("propagates get errors", func() {
 			text := "dummy todo"
-			input := TodoInput{Text: &text}
+			completed := false
+			input := TodoInput{Text: &text, Completed: &completed}
 
-			query = fmt.Sprintf(query, text)
 			lastInsertId := int64(3)
-			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(lastInsertId, 1))
+			mock.ExpectExec(regexp.QuoteMeta(query)).
+				WithArgs(&text, &completed).
+				WillReturnResult(sqlmock.NewResult(lastInsertId, 1))
 
 			expected := errors.New("get failed")
 			mock.ExpectQuery(getQuery).WillReturnError(expected)
