@@ -20,6 +20,7 @@ func (h *Handler) Register(r gin.IRoutes) {
 	r.GET("/todos/:id", h.getById)
 	r.POST("/todos", h.post)
 	r.PUT("/todos/:id", h.put)
+	r.PATCH("/todos/:id", h.patch)
 	r.DELETE("/todos/:id", h.delete)
 }
 
@@ -115,6 +116,48 @@ func (h *Handler) put(ctx *gin.Context) {
 		return
 	}
 
+	c := ctx.Request.Context()
+	t, err := h.svc.Update(c, uint32(id), updatedTodo)
+	if err != nil {
+		if errors.Is(err, ErrInputInvalid) {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, ErrNotFound) {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, t)
+}
+
+func (h *Handler) patch(ctx *gin.Context) {
+	if ctx.ContentType() != "application/json" {
+		ctx.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Content-Type must be application/json"})
+		return
+	}
+
+	i := ctx.Param("id")
+	id, err := strconv.ParseUint(i, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
+		return
+	}
+
+	var updatedTodo TodoInput
+	err = ctx.ShouldBindJSON(&updatedTodo)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		return
+	}
+
+	if updatedTodo.Text == nil && updatedTodo.Completed == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "text and completed fields missing - provide at least one"})
+		return
+	}
 	c := ctx.Request.Context()
 	t, err := h.svc.Update(c, uint32(id), updatedTodo)
 	if err != nil {

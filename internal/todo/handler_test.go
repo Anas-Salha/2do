@@ -329,6 +329,101 @@ var _ = Describe("handler", Label("handler"), func() {
 		})
 	})
 
+	Describe("PATCH /todos", Label("patch"), func() {
+		It("Verifies happy path", func() {
+			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) {
+				Expect(id).To(Equal(uint32(12)))
+				Expect(in.Text).NotTo(BeNil())
+				Expect(*in.Text).To(Equal("call mom"))
+				Expect(in.Completed).NotTo(BeNil())
+				Expect(*in.Completed).To(BeTrue())
+				return &Todo{ID: id, Text: "call mom", Completed: true}, nil
+			}
+
+			payload := "{\"text\":\"call mom\",\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/12", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusOK))
+		})
+
+		It("Reports bad request for invalid ID type", func() {
+			req := httptest.NewRequest(http.MethodPatch, "/todos/x", nil)
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"ID must be an integer"}`))
+		})
+
+		It("Reports bad request for invalid JSON", func() {
+			payload := "{\"text\":true,\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
+		})
+
+		It("Reports bad request for missing fields", func() {
+			payload := "{}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"text and completed fields missing - provide at least one"}`))
+		})
+
+		It("Reports error unsupported media type", func() {
+			payload := "{\"text\":\"water the plants\",\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/octal-stream")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusUnsupportedMediaType))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"Content-Type must be application/json"}`))
+		})
+
+		It("Propagates error not found when ID doesn't exist", func() {
+			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrNotFound }
+			payload := "{\"text\":\"call mom\",\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusNotFound))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo not found"}`))
+		})
+
+		It("Propagates error input invalid", func() {
+			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrInputInvalid }
+			payload := "{\"text\":\"\", \"completed\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusUnprocessableEntity))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo input invalid"}`))
+		})
+
+		It("Reports internal server error", func() {
+			err := errors.New("database is down")
+			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, err }
+
+			payload := "{\"text\":\"call mom\",\"completed\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+		})
+	})
+
 	Describe("DELETE /todos/:id", Label("delete"), func() {
 		It("Verifies happy path", func() {
 			svc.deleteFn = func(ctx context.Context, id uint32) error {
