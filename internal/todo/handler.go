@@ -71,6 +71,11 @@ func (h *Handler) post(ctx *gin.Context) {
 		return
 	}
 
+	if newTodo.Text == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing field - provide text field"})
+		return
+	}
+
 	if newTodo.Completed == nil {
 		val := false
 		newTodo.Completed = &val
@@ -112,7 +117,7 @@ func (h *Handler) put(ctx *gin.Context) {
 	}
 
 	if updatedTodo.Text == nil || updatedTodo.Completed == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing field"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing field - provide both text and completed fields"})
 		return
 	}
 

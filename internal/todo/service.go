@@ -44,10 +44,6 @@ func (s *service) GetById(ctx context.Context, id uint32) (*Todo, error) {
 }
 
 func (s *service) Create(ctx context.Context, in TodoInput) (*Todo, error) {
-	if in.Text == nil {
-		return nil, fmt.Errorf("%w: text field missing", ErrInputInvalid)
-	}
-
 	t, err := s.repo.Create(ctx, in)
 	if err != nil {
 		return nil, err
@@ -57,10 +53,6 @@ func (s *service) Create(ctx context.Context, in TodoInput) (*Todo, error) {
 }
 
 func (s *service) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, error) {
-	if in.Text == nil && in.Completed == nil {
-		return nil, fmt.Errorf("%w: text and completed fields missing - provide at least one.", ErrInputInvalid)
-	}
-
 	t, err := s.repo.Update(ctx, id, in)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {

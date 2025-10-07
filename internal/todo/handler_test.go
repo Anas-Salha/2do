@@ -198,6 +198,16 @@ var _ = Describe("handler", Label("handler"), func() {
 			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
 		})
 
+		It("Reports bad request for missing text field", func() {
+			payload := "{}"
+			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"missing field - provide text field"}`))
+		})
+
 		It("Reports error unsupported media type", func() {
 			payload := "{\"text\":\"water the plants\"}"
 			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
@@ -280,7 +290,7 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"missing field"}`))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"missing field - provide both text and completed fields"}`))
 		})
 
 		It("Reports error unsupported media type", func() {
