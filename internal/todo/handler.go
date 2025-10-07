@@ -38,7 +38,7 @@ func (h *Handler) getAll(ctx *gin.Context) {
 
 func (h *Handler) getById(ctx *gin.Context) {
 	i := ctx.Param("id")
-	id, err := strconv.Atoi(i)
+	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
 		return
@@ -98,7 +98,7 @@ func (h *Handler) put(ctx *gin.Context) {
 	}
 
 	i := ctx.Param("id")
-	id, err := strconv.Atoi(i)
+	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
 		return
@@ -178,7 +178,7 @@ func (h *Handler) patch(ctx *gin.Context) {
 
 func (h *Handler) delete(ctx *gin.Context) {
 	i := ctx.Param("id")
-	id, err := strconv.Atoi(i)
+	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
 		return
