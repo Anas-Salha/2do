@@ -12,8 +12,10 @@ type registrable interface {
 
 func NewRouter(todoHandler registrable, allowedOrigins []string) *gin.Engine {
 	r := gin.Default()
-	r.Use(ContextTimeout(2 * time.Second))
-	r.Use(Cors(allowedOrigins))
+	r.HandleMethodNotAllowed = true
+	r.NoMethod(methodNotAllowed)
+	r.Use(contextTimeout(2 * time.Second))
+	r.Use(setCors(allowedOrigins))
 
 	api := r.Group("/api")
 	v := api.Group("/v0")
