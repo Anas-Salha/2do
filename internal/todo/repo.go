@@ -99,9 +99,7 @@ func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, e
 	if err != nil {
 		return nil, err
 	}
-	if rows == 0 {
-		return nil, ErrNotFound
-	} else if rows != 1 {
+	if rows > 1 {
 		return nil, ErrMultipleRowsAffected
 	}
 
@@ -109,6 +107,9 @@ func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, e
 	getQuery := fmt.Sprintf("SELECT id, text, completed, created_at, updated_at FROM `%s` WHERE id=?", table)
 	err = r.db.QueryRowContext(ctx, getQuery, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 

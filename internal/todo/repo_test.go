@@ -312,8 +312,10 @@ var _ = Describe("repo", Label("repo"), func() {
 			Expect(todo).To(BeNil())
 		})
 
-		It("returns todo not found error if no rows affected", func() {
-			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(0, 0))
+		It("returns todo not found error if row not found after insertion", func() {
+			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(0, 1)) // Mock success inserting
+
+			mock.ExpectQuery(getQuery).WillReturnError(sql.ErrNoRows)
 
 			todo, err := repo.Update(ctx, 1, TodoInput{})
 			Expect(err).To(MatchError(ErrNotFound))
