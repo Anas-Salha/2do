@@ -195,7 +195,17 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+		})
+
+		It("Reports bad request for JSON w/ unsupported fields", func() {
+			payload := "{\"text\":\"stretch\",\"completed\":true,\"done\":true}"
+			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
 		})
 
 		It("Reports bad request for missing text field", func() {
@@ -280,7 +290,17 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+		})
+
+		It("Reports bad request for JSON w/ unsupported fields", func() {
+			payload := "{\"text\":\"call mom\",\"completed\":true,\"done\":true}"
+			req := httptest.NewRequest(http.MethodPut, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
 		})
 
 		It("Reports bad request for missing field", func() {
@@ -375,7 +395,17 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json"}`))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+		})
+
+		It("Reports bad request for JSON w/ unsupported fields", func() {
+			payload := "{\"text\":\"call mom\",\"done\":true}"
+			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
 		})
 
 		It("Reports bad request for missing fields", func() {

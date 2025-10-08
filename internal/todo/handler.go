@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -65,9 +66,9 @@ func (h *Handler) post(ctx *gin.Context) {
 	}
 
 	var newTodo TodoInput
-	err := ctx.ShouldBindJSON(&newTodo)
+	err := decodeJsonPayload(ctx, &newTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -110,9 +111,9 @@ func (h *Handler) put(ctx *gin.Context) {
 	}
 
 	var updatedTodo TodoInput
-	err = ctx.ShouldBindJSON(&updatedTodo)
+	err = decodeJsonPayload(ctx, &updatedTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -153,9 +154,9 @@ func (h *Handler) patch(ctx *gin.Context) {
 	}
 
 	var updatedTodo TodoInput
-	err = ctx.ShouldBindJSON(&updatedTodo)
+	err = decodeJsonPayload(ctx, &updatedTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -201,4 +202,19 @@ func (h *Handler) delete(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusNoContent, nil)
+}
+
+func decodeJsonPayload(ctx *gin.Context, t *TodoInput) error {
+	decoder := json.NewDecoder(ctx.Request.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(t); err != nil {
+		return errors.New("invalid json input")
+	}
+
+	if decoder.More() {
+		return errors.New("invalid json input")
+	}
+
+	return nil
 }
