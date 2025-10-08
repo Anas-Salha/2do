@@ -36,5 +36,3 @@ docker compose up --build
 **Documentation:** https://anas-salha.github.io/2do/
 
 - OpenAPI schema: [`openapi.yaml`](./docs/openapi.yaml)
-
-**Note:** Server responses may not match documentation as of now. Implemention is WIP.
