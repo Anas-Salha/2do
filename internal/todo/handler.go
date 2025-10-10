@@ -1,6 +1,7 @@
 package todo
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -66,7 +67,7 @@ func (h *Handler) post(ctx *gin.Context) {
 	}
 
 	var newTodo TodoInput
-	err := decodeJsonPayload(ctx, &newTodo)
+	err := decodeIntoInput(ctx, &newTodo)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -111,7 +112,7 @@ func (h *Handler) put(ctx *gin.Context) {
 	}
 
 	var updatedTodo TodoInput
-	err = decodeJsonPayload(ctx, &updatedTodo)
+	err = decodeIntoInput(ctx, &updatedTodo)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -154,7 +155,7 @@ func (h *Handler) patch(ctx *gin.Context) {
 	}
 
 	var updatedTodo TodoInput
-	err = decodeJsonPayload(ctx, &updatedTodo)
+	err = decodeIntoInput(ctx, &updatedTodo)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -204,10 +205,38 @@ func (h *Handler) delete(ctx *gin.Context) {
 	ctx.JSON(http.StatusNoContent, nil)
 }
 
-func decodeJsonPayload(ctx *gin.Context, t *TodoInput) error {
-	decoder := json.NewDecoder(ctx.Request.Body)
-	decoder.DisallowUnknownFields()
+// decodeIntoInput decodes the JSON request body from the provided gin.Context
+// into the given TodoInput struct. It returns an error if the input is not valid
+// JSON, contains unknown fields, contains fields explicitly set to null, or if
+// there is extra data after the first JSON object. The function has the side
+// effect of populating the provided TodoInput argument with the decoded data.
+func decodeIntoInput(ctx *gin.Context, t *TodoInput) error {
+	// Decode into a map to check for explicit nulls
+	var raw map[string]*json.RawMessage
+	if err := ctx.ShouldBindJSON(&raw); err != nil {
+		return errors.New("invalid json input")
+	}
 
+	// Check for explicit nulls
+	for k, v := range raw {
+		if v == nil {
+			return fmt.Errorf("field %q cannot be null", k)
+		}
+		var tmp any
+		if err := json.Unmarshal(*v, &tmp); err == nil && tmp == nil {
+			return fmt.Errorf("field %q cannot be null", k)
+		}
+	}
+
+	// Re-marshal the map back to JSON bytes
+	buf, err := json.Marshal(raw)
+	if err != nil {
+		return errors.New("invalid json input")
+	}
+
+	// Use decoder to decode into the struct, protecting against unknown fields
+	decoder := json.NewDecoder(bytes.NewReader(buf))
+	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(t); err != nil {
 		return errors.New("invalid json input")
 	}

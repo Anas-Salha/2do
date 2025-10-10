@@ -188,6 +188,16 @@ var _ = Describe("handler", Label("handler"), func() {
 			Expect(rr.Body.String()).To(ContainSubstring(`"id":7,"text":"stretch","completed":true`))
 		})
 
+		It("Reports bad request for field explicitly set to null", func() {
+			payload := "{\"text\":null}"
+			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
+			req.Header.Set("Content-Type", "application/json")
+			router.ServeHTTP(rr, req)
+
+			Expect(rr.Code).To(Equal(http.StatusBadRequest))
+			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"field \"text\" cannot be null"}`))
+		})
+
 		It("Reports bad request for invalid JSON", func() {
 			payload := "{\"text\":true}"
 			req := httptest.NewRequest(http.MethodPost, "/todos", strings.NewReader(payload))
