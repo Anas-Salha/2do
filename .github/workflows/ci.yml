@@ -81,7 +81,7 @@ jobs:
         id: version
         run: |
           set -eo pipefail
-          if VERSION=$(git describe --tags --dirty --always 2>/dev/null); then
+          if VERSION=$(git describe --tags --dirty 2>/dev/null); then
             :
           else
             VERSION="0.0.0-dev-${GITHUB_SHA::7}"
