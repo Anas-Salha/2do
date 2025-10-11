@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/anas-salha/2do/internal/buildinfo"
 	"github.com/anas-salha/2do/internal/config"
 	"github.com/anas-salha/2do/internal/database"
 	"github.com/anas-salha/2do/internal/http"
@@ -14,7 +15,12 @@ import (
 )
 
 func main() {
-	fmt.Println("2do - An overengineered TODO app")
+	fmt.Printf(
+		"2do - An overengineered TODO app (version %s, commit %s, built %s)\n",
+		buildinfo.Version,
+		buildinfo.Commit,
+		buildinfo.Date,
+	)
 
 	cfg := config.Load()
 	db, err := database.Open(cfg)

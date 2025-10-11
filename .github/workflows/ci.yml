@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  determine-changes:
+    name: Determine Affected Paths
+    runs-on: ubuntu-latest
+    outputs:
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Filter Paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docs:
+              - 'docs/openapi.yaml'
+
+  docs:
+    name: Redoc Generation
+    needs: determine-changes
+    if: ${{ needs.determine-changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate Redoc HTML
+        run: npx --yes @redocly/cli build-docs docs/openapi.yaml --output docs/index.html
+
+      - name: Commit Generated HTML
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: Update generated Redoc HTML"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: determine-changes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Download Dependencies
+        run: go mod download
+
+      - name: Install Ginkgo CLI
+        run: go install github.com/onsi/ginkgo/v2/ginkgo@v2.25.3
+
+      - name: Run Ginkgo Tests
+        run: ginkgo -r internal/todo
+
+      - name: Determine Version
+        id: version
+        run: |
+          set -eo pipefail
+          if VERSION=$(git describe --tags --dirty --always 2>/dev/null); then
+            :
+          else
+            VERSION="0.0.0-dev-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Sanitize Version
+        id: artifact_meta
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SANITIZED=$(echo "$VERSION" | tr -cs 'A-Za-z0-9._-' '-')
+          echo "sanitized_version=$SANITIZED" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Build Metadata
+        id: build_meta
+        run: |
+          COMMIT=$(git rev-parse HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          {
+            echo "commit=$COMMIT"
+            echo "build_date=$BUILD_DATE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build Binary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT: ${{ steps.build_meta.outputs.commit }}
+          BUILD_DATE: ${{ steps.build_meta.outputs.build_date }}
+        run: |
+          mkdir -p dist
+          go build \
+            -ldflags "\
+              -X github.com/anas-salha/2do/internal/buildinfo.Version=${VERSION} \
+              -X github.com/anas-salha/2do/internal/buildinfo.Commit=${COMMIT} \
+              -X github.com/anas-salha/2do/internal/buildinfo.Date=${BUILD_DATE}" \
+            -o dist/2do \
+            ./cmd/2do
+
+      - name: Package Binary Artifact
+        env:
+          ARTIFACT_VERSION: ${{ steps.artifact_meta.outputs.sanitized_version }}
+        run: |
+          mkdir -p dist
+          cp dist/2do "dist/2do-${ARTIFACT_VERSION}-linux-amd64"
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 2do-${{ steps.artifact_meta.outputs.sanitized_version }}-linux-amd64
+          path: dist/2do-${{ steps.artifact_meta.outputs.sanitized_version }}-linux-amd64
