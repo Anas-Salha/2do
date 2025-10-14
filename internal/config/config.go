@@ -24,7 +24,7 @@ func Load() Config {
 		DBHost:         getEnv("DB_HOST"),
 		DBPort:         getEnv("DB_PORT"),
 		Port:           getEnvDefault("PORT", "8080"),
-		AllowedOrigins: splitAndTrim(getEnv("ALLOWED_ORIGINS")),
+		AllowedOrigins: splitAndTrim(getEnvDefault("ALLOWED_ORIGINS", "*")),
 	}
 }
 
@@ -48,7 +48,7 @@ func getEnvDefault(k string, d string) string {
 
 func splitAndTrim(s string) []string {
 	if s == "" {
-		return nil
+		return []string{"*"}
 	}
 	parts := strings.Split(s, ",")
 	out := make([]string, 0, len(parts))
