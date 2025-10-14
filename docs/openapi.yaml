@@ -24,26 +24,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
-  /todos/{id}:
-    get:
-      summary: Get a todo by ID
-      operationId: getTodo
-      parameters:
-        - $ref: "#/components/parameters/ID"
-      responses:
-        "200":
-          description: Todo resource
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Todo"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
     post:
       summary: Create a new todo
       operationId: createTodo
@@ -73,6 +53,26 @@ paths:
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /todos/{id}:
+    get:
+      summary: Get a todo by ID
+      operationId: getTodo
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          description: Todo resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
