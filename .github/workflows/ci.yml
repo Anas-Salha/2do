@@ -31,6 +31,8 @@ jobs:
     needs: determine-changes
     if: ${{ needs.determine-changes.outputs.docs == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,6 +46,7 @@ jobs:
         run: npx --yes @redocly/cli build-docs docs/openapi.yaml --output docs/index.html
 
       - name: Commit Generated HTML
+        if: ${{ github.event_name == 'push' }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
