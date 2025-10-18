@@ -224,13 +224,26 @@ components:
 
     Error:
       type: object
+      additionalProperties: false
       properties:
         error:
-          type: string
-          example: Bad Request
-        message:
-          type: string
-          example: "Path parameter 'id' must be an integer"
+          type: object
+          additionalProperties: false
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code.
+              example: bad_id
+            message:
+              type: string
+              description: Optional human-readable context for the error.
+              example: "ID must be an integer"
+            timestamp:
+              type: string
+              format: date-time
+              description: RFC3339 timestamp for when the error was generated.
+              example: 2025-09-20T15:00:00Z
+          required: [code, timestamp]
       required: [error]
 
   responses:
@@ -244,13 +257,17 @@ components:
             invalidId:
               summary: Non-integer id
               value:
-                error: Bad Request
-                message: "Path parameter 'id' must be an integer"
+                error:
+                  code: bad_id
+                  message: "ID must be an integer"
+                  timestamp: 2025-09-20T15:00:00Z
             badJson:
               summary: Malformed JSON
               value:
-                error: Bad Request
-                message: "Request body is not valid JSON"
+                error:
+                  code: bad_json
+                  message: "invalid json input"
+                  timestamp: 2025-09-20T15:00:00Z
 
     UnsupportedMediaType:
       description: Content-Type must be application/json
@@ -261,8 +278,10 @@ components:
           examples:
             wrongContentType:
               value:
-                error: Unsupported Media Type
-                message: "Use Content-Type: application/json"
+                error:
+                  code: unsupported_media_type
+                  message: "Content-Type must be application/json"
+                  timestamp: 2025-09-20T15:00:00Z
 
     NotFound:
       description: Resource not found by ID
@@ -273,8 +292,10 @@ components:
           examples:
             todoMissing:
               value:
-                error: Not Found
-                message: "Todo not found - id: 999"
+                error:
+                  code: todo_not_found
+                  message: "No resource found with ID = 999"
+                  timestamp: 2025-09-20T15:00:00Z
 
     UnprocessableEntity:
       description: Valid JSON but fails schema validation
@@ -285,12 +306,16 @@ components:
           examples:
             missingProperty:
               value:
-                error: Unprocessable Entity
-                message: "Missing required property: text"
+                error:
+                  code: input_invalid
+                  message: "Missing required property: text"
+                  timestamp: 2025-09-20T15:00:00Z
             unknownProperty:
               value:
-                error: Unprocessable Entity
-                message: "Additional property 'txt' is not allowed"
+                error:
+                  code: input_invalid
+                  message: "Additional property 'txt' is not allowed"
+                  timestamp: 2025-09-20T15:00:00Z
 
     InternalServerError:
       description: Unexpected server error
@@ -301,5 +326,7 @@ components:
           examples:
             generic:
               value:
-                error: Internal Server Error
-                message: "An unexpected error occurred"
+                error:
+                  code: unexpected
+                  message: "An unexpected error occurred"
+                  timestamp: 2025-09-20T15:00:00Z
