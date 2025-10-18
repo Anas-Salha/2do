@@ -2,8 +2,6 @@ package todo
 
 import (
 	"context"
-	"errors"
-	"fmt"
 )
 
 type Service interface {
@@ -34,9 +32,6 @@ func (s *service) GetAll(ctx context.Context) ([]Todo, error) {
 func (s *service) GetById(ctx context.Context, id uint32) (*Todo, error) {
 	t, err := s.repo.Get(ctx, id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return nil, fmt.Errorf("%w: id: %d", ErrNotFound, id)
-		}
 		return nil, err
 	}
 
@@ -55,9 +50,6 @@ func (s *service) Create(ctx context.Context, in TodoInput) (*Todo, error) {
 func (s *service) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, error) {
 	t, err := s.repo.Update(ctx, id, in)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return nil, fmt.Errorf("%w: id: %d", ErrNotFound, id)
-		}
 		return nil, err
 	}
 
@@ -67,9 +59,6 @@ func (s *service) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, e
 func (s *service) Delete(ctx context.Context, id uint32) error {
 	err := s.repo.Delete(ctx, id)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return fmt.Errorf("%w: id: %d", ErrNotFound, id)
-		}
 		return err
 	}
 

@@ -31,7 +31,8 @@ func (h *Handler) getAll(ctx *gin.Context) {
 
 	todos, err := h.svc.GetAll(c)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		r := NewErrorResponse(ErrUnexpected.Error(), "")
+		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 
@@ -42,18 +43,22 @@ func (h *Handler) getById(ctx *gin.Context) {
 	i := ctx.Param("id")
 	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
+		r := NewErrorResponse(ErrBadId.Error(), "ID must be an integer")
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	c := ctx.Request.Context()
 	t, err := h.svc.GetById(c, uint32(id))
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrTodoNotFound) {
+			msg := fmt.Sprintf("No resource found with ID = %d", id)
+			r := NewErrorResponse(ErrTodoNotFound.Error(), msg)
+			ctx.JSON(http.StatusNotFound, r)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		r := NewErrorResponse(ErrUnexpected.Error(), "")
+		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 
@@ -62,19 +67,22 @@ func (h *Handler) getById(ctx *gin.Context) {
 
 func (h *Handler) post(ctx *gin.Context) {
 	if ctx.ContentType() != "application/json" {
-		ctx.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Content-Type must be application/json"})
+		r := NewErrorResponse(ErrUnsupportedMediaType.Error(), "Content-Type must be application/json")
+		ctx.JSON(http.StatusUnsupportedMediaType, r)
 		return
 	}
 
 	var newTodo TodoInput
 	err := decodeIntoInput(ctx, &newTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		r := NewErrorResponse(ErrBadJson.Error(), err.Error())
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	if newTodo.Text == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing field - provide text field"})
+		r := NewErrorResponse(ErrBadJson.Error(), "missing required `text` field")
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
@@ -87,10 +95,12 @@ func (h *Handler) post(ctx *gin.Context) {
 	t, err := h.svc.Create(c, newTodo)
 	if err != nil {
 		if errors.Is(err, ErrInputInvalid) {
-			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+			r := NewErrorResponse(ErrInputInvalid.Error(), err.Error())
+			ctx.JSON(http.StatusUnprocessableEntity, r)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		r := NewErrorResponse(ErrUnexpected.Error(), "")
+		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 
@@ -100,26 +110,30 @@ func (h *Handler) post(ctx *gin.Context) {
 
 func (h *Handler) put(ctx *gin.Context) {
 	if ctx.ContentType() != "application/json" {
-		ctx.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Content-Type must be application/json"})
+		r := NewErrorResponse(ErrUnsupportedMediaType.Error(), "Content-Type must be application/json")
+		ctx.JSON(http.StatusUnsupportedMediaType, r)
 		return
 	}
 
 	i := ctx.Param("id")
 	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
+		r := NewErrorResponse(ErrBadId.Error(), "ID must be an integer")
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	var updatedTodo TodoInput
 	err = decodeIntoInput(ctx, &updatedTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		r := NewErrorResponse(ErrBadJson.Error(), err.Error())
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	if updatedTodo.Text == nil || updatedTodo.Completed == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing field - provide both text and completed fields"})
+		r := NewErrorResponse(ErrBadJson.Error(), "missing required `text` and `completed` fields")
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
@@ -127,14 +141,18 @@ func (h *Handler) put(ctx *gin.Context) {
 	t, err := h.svc.Update(c, uint32(id), updatedTodo)
 	if err != nil {
 		if errors.Is(err, ErrInputInvalid) {
-			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+			r := NewErrorResponse(ErrInputInvalid.Error(), err.Error())
+			ctx.JSON(http.StatusUnprocessableEntity, r)
 			return
 		}
-		if errors.Is(err, ErrNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrTodoNotFound) {
+			msg := fmt.Sprintf("No resource found with ID = %d", id)
+			r := NewErrorResponse(ErrTodoNotFound.Error(), msg)
+			ctx.JSON(http.StatusNotFound, r)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		r := NewErrorResponse(ErrUnexpected.Error(), "")
+		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 
@@ -143,40 +161,49 @@ func (h *Handler) put(ctx *gin.Context) {
 
 func (h *Handler) patch(ctx *gin.Context) {
 	if ctx.ContentType() != "application/json" {
-		ctx.JSON(http.StatusUnsupportedMediaType, gin.H{"error": "Content-Type must be application/json"})
+		r := NewErrorResponse(ErrUnsupportedMediaType.Error(), "Content-Type must be application/json")
+		ctx.JSON(http.StatusUnsupportedMediaType, r)
 		return
 	}
 
 	i := ctx.Param("id")
 	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
+		r := NewErrorResponse(ErrBadId.Error(), "ID must be an integer")
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	var updatedTodo TodoInput
 	err = decodeIntoInput(ctx, &updatedTodo)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		r := NewErrorResponse(ErrBadJson.Error(), err.Error())
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	if updatedTodo.Text == nil && updatedTodo.Completed == nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "text and completed fields missing - provide at least one"})
+		msg := "missing required `text` or `completed` field"
+		r := NewErrorResponse(ErrBadJson.Error(), msg)
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 	c := ctx.Request.Context()
 	t, err := h.svc.Update(c, uint32(id), updatedTodo)
 	if err != nil {
 		if errors.Is(err, ErrInputInvalid) {
-			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+			r := NewErrorResponse(ErrInputInvalid.Error(), err.Error())
+			ctx.JSON(http.StatusUnprocessableEntity, r)
 			return
 		}
-		if errors.Is(err, ErrNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrTodoNotFound) {
+			msg := fmt.Sprintf("No resource found with ID = %d", id)
+			r := NewErrorResponse(ErrTodoNotFound.Error(), msg)
+			ctx.JSON(http.StatusNotFound, r)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		r := NewErrorResponse(ErrUnexpected.Error(), "")
+		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 
@@ -187,18 +214,22 @@ func (h *Handler) delete(ctx *gin.Context) {
 	i := ctx.Param("id")
 	id, err := strconv.ParseUint(i, 10, 32)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID must be an integer"})
+		r := NewErrorResponse(ErrBadId.Error(), "ID must be an integer")
+		ctx.JSON(http.StatusBadRequest, r)
 		return
 	}
 
 	c := ctx.Request.Context()
 	err = h.svc.Delete(c, uint32(id))
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, ErrTodoNotFound) {
+			msg := fmt.Sprintf("No resource found with ID = %d", id)
+			r := NewErrorResponse(ErrTodoNotFound.Error(), msg)
+			ctx.JSON(http.StatusNotFound, r)
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error"})
+		r := NewErrorResponse(ErrUnexpected.Error(), "")
+		ctx.JSON(http.StatusInternalServerError, r)
 		return
 	}
 

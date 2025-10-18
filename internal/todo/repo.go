@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 )
 
 const table = "todos"
@@ -56,7 +57,7 @@ func (r *sqlrepo) Get(ctx context.Context, id uint32) (*Todo, error) {
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrTodoNotFound
 		}
 		return nil, err
 	}
@@ -100,7 +101,8 @@ func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, e
 		return nil, err
 	}
 	if rows > 1 {
-		return nil, ErrMultipleRowsAffected
+		log.Print("unexpected: multiple rows affected")
+		return nil, ErrUnexpected
 	}
 
 	var t Todo
@@ -108,7 +110,7 @@ func (r *sqlrepo) Update(ctx context.Context, id uint32, in TodoInput) (*Todo, e
 	err = r.db.QueryRowContext(ctx, getQuery, id).Scan(&t.ID, &t.Text, &t.Completed, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, ErrTodoNotFound
 		}
 		return nil, err
 	}
@@ -128,9 +130,10 @@ func (r *sqlrepo) Delete(ctx context.Context, id uint32) error {
 		return err
 	}
 	if rows == 0 {
-		return ErrNotFound
+		return ErrTodoNotFound
 	} else if rows != 1 {
-		return ErrMultipleRowsAffected
+		log.Print("unexpected: multiple rows affected")
+		return ErrUnexpected
 	}
 
 	return nil
