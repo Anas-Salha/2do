@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -98,7 +99,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnexpected.Error()))
 		})
 	})
 
@@ -124,17 +128,24 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"ID must be an integer"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadId.Error()))
+			Expect(resp.Error.Message).To(Equal("ID must be an integer"))
+
 		})
 
 		It("Propagates error not found when ID doesn't exist", func() {
-			svc.getByIDFn = func(ctx context.Context, id uint32) (*Todo, error) { return nil, ErrNotFound }
+			svc.getByIDFn = func(ctx context.Context, id uint32) (*Todo, error) { return nil, ErrTodoNotFound }
 
 			req := httptest.NewRequest(http.MethodGet, "/todos/3", nil)
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusNotFound))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo not found"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrTodoNotFound.Error()))
+			Expect(resp.Error.Message).To(Equal(fmt.Sprintf("No resource found with ID = %d", 3)))
 		})
 
 		It("Reports internal server error", func() {
@@ -145,7 +156,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnexpected.Error()))
 		})
 	})
 
@@ -195,7 +208,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"field \"text\" cannot be null"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("field \"text\" cannot be null"))
 		})
 
 		It("Reports bad request for invalid JSON", func() {
@@ -205,7 +221,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("invalid json input"))
 		})
 
 		It("Reports bad request for JSON w/ unsupported fields", func() {
@@ -215,7 +234,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("invalid json input"))
 		})
 
 		It("Reports bad request for missing text field", func() {
@@ -225,7 +247,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"missing field - provide text field"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("missing required `text` field"))
 		})
 
 		It("Reports error unsupported media type", func() {
@@ -235,7 +260,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusUnsupportedMediaType))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"Content-Type must be application/json"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnsupportedMediaType.Error()))
+			Expect(resp.Error.Message).To(Equal("Content-Type must be application/json"))
 		})
 
 		It("Propagates error input invalid", func() {
@@ -247,7 +275,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusUnprocessableEntity))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo input invalid"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrInputInvalid.Error()))
 		})
 
 		It("Reports internal server error", func() {
@@ -260,7 +290,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnexpected.Error()))
 		})
 	})
 
@@ -290,7 +322,11 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"ID must be an integer"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadId.Error()))
+			Expect(resp.Error.Message).To(Equal("ID must be an integer"))
+
 		})
 
 		It("Reports bad request for invalid JSON", func() {
@@ -300,7 +336,11 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("invalid json input"))
+
 		})
 
 		It("Reports bad request for JSON w/ unsupported fields", func() {
@@ -310,7 +350,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("invalid json input"))
 		})
 
 		It("Reports bad request for missing field", func() {
@@ -320,7 +363,11 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"missing field - provide both text and completed fields"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("missing required `text` and `completed` fields"))
+
 		})
 
 		It("Reports error unsupported media type", func() {
@@ -330,18 +377,25 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusUnsupportedMediaType))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"Content-Type must be application/json"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnsupportedMediaType.Error()))
+			Expect(resp.Error.Message).To(Equal("Content-Type must be application/json"))
+
 		})
 
 		It("Propagates error not found when ID doesn't exist", func() {
-			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrNotFound }
+			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrTodoNotFound }
 			payload := "{\"text\":\"call mom\",\"completed\":true}"
 			req := httptest.NewRequest(http.MethodPut, "/todos/3", strings.NewReader(payload))
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusNotFound))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo not found"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrTodoNotFound.Error()))
+			Expect(resp.Error.Message).To(Equal(fmt.Sprintf("No resource found with ID = %d", 3)))
 		})
 
 		It("Propagates error input invalid", func() {
@@ -352,7 +406,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusUnprocessableEntity))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo input invalid"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrInputInvalid.Error()))
 		})
 
 		It("Reports internal server error", func() {
@@ -365,7 +421,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnexpected.Error()))
 		})
 	})
 
@@ -395,7 +453,11 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"ID must be an integer"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadId.Error()))
+			Expect(resp.Error.Message).To(Equal("ID must be an integer"))
+
 		})
 
 		It("Reports bad request for invalid JSON", func() {
@@ -405,7 +467,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("invalid json input"))
 		})
 
 		It("Reports bad request for JSON w/ unsupported fields", func() {
@@ -415,7 +480,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"invalid json input"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("invalid json input"))
 		})
 
 		It("Reports bad request for missing fields", func() {
@@ -425,7 +493,10 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"text and completed fields missing - provide at least one"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadJson.Error()))
+			Expect(resp.Error.Message).To(Equal("missing required `text` or `completed` field"))
 		})
 
 		It("Reports error unsupported media type", func() {
@@ -435,18 +506,24 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusUnsupportedMediaType))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"Content-Type must be application/json"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnsupportedMediaType.Error()))
+			Expect(resp.Error.Message).To(Equal("Content-Type must be application/json"))
 		})
 
 		It("Propagates error not found when ID doesn't exist", func() {
-			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrNotFound }
+			svc.updateFn = func(ctx context.Context, id uint32, in TodoInput) (*Todo, error) { return nil, ErrTodoNotFound }
 			payload := "{\"text\":\"call mom\",\"completed\":true}"
 			req := httptest.NewRequest(http.MethodPatch, "/todos/3", strings.NewReader(payload))
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusNotFound))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo not found"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrTodoNotFound.Error()))
+			Expect(resp.Error.Message).To(Equal(fmt.Sprintf("No resource found with ID = %d", 3)))
 		})
 
 		It("Propagates error input invalid", func() {
@@ -457,7 +534,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusUnprocessableEntity))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo input invalid"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrInputInvalid.Error()))
 		})
 
 		It("Reports internal server error", func() {
@@ -470,7 +549,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnexpected.Error()))
 		})
 	})
 
@@ -492,16 +573,22 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusBadRequest))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"ID must be an integer"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrBadId.Error()))
+			Expect(resp.Error.Message).To(Equal("ID must be an integer"))
 		})
 
 		It("Propagates error not found when ID doesn't exist", func() {
-			svc.deleteFn = func(ctx context.Context, id uint32) error { return ErrNotFound }
+			svc.deleteFn = func(ctx context.Context, id uint32) error { return ErrTodoNotFound }
 			req := httptest.NewRequest(http.MethodDelete, "/todos/3", nil)
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusNotFound))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"todo not found"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrTodoNotFound.Error()))
+			Expect(resp.Error.Message).To(Equal(fmt.Sprintf("No resource found with ID = %d", 3)))
 		})
 
 		It("Reports internal server error", func() {
@@ -511,7 +598,9 @@ var _ = Describe("handler", Label("handler"), func() {
 			router.ServeHTTP(rr, req)
 
 			Expect(rr.Code).To(Equal(http.StatusInternalServerError))
-			Expect(rr.Body.String()).To(BeEquivalentTo(`{"error":"unexpected error"}`))
+			var resp ErrorResponse
+			Expect(json.Unmarshal(rr.Body.Bytes(), &resp)).To(Succeed())
+			Expect(resp.Error.Code).To(Equal(ErrUnexpected.Error()))
 		})
 	})
 })

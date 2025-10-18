@@ -136,7 +136,7 @@ var _ = Describe("repo", Label("repo"), func() {
 			mock.ExpectQuery(query).WillReturnError(sql.ErrNoRows)
 
 			todo, err := repo.Get(ctx, 1)
-			Expect(err).To(MatchError(ErrNotFound))
+			Expect(err).To(MatchError(ErrTodoNotFound))
 			Expect(todo).To(BeNil())
 		})
 	})
@@ -318,7 +318,7 @@ var _ = Describe("repo", Label("repo"), func() {
 			mock.ExpectQuery(getQuery).WillReturnError(sql.ErrNoRows)
 
 			todo, err := repo.Update(ctx, 1, TodoInput{})
-			Expect(err).To(MatchError(ErrNotFound))
+			Expect(err).To(MatchError(ErrTodoNotFound))
 			Expect(todo).To(BeNil())
 		})
 
@@ -326,7 +326,7 @@ var _ = Describe("repo", Label("repo"), func() {
 			mock.ExpectExec(regexp.QuoteMeta(query)).WillReturnResult(sqlmock.NewResult(0, 3))
 
 			todo, err := repo.Update(ctx, 1, TodoInput{})
-			Expect(err).To(MatchError(ErrMultipleRowsAffected))
+			Expect(err).To(MatchError(ErrUnexpected))
 			Expect(todo).To(BeNil())
 		})
 
@@ -358,14 +358,14 @@ var _ = Describe("repo", Label("repo"), func() {
 			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 0))
 
 			err := repo.Delete(ctx, 1)
-			Expect(err).To(MatchError(ErrNotFound))
+			Expect(err).To(MatchError(ErrTodoNotFound))
 		})
 
 		It("propagates error if multiple rows affected", func() {
 			mock.ExpectExec(query).WillReturnResult(sqlmock.NewResult(0, 3))
 
 			err := repo.Delete(ctx, 1)
-			Expect(err).To(MatchError(ErrMultipleRowsAffected))
+			Expect(err).To(MatchError(ErrUnexpected))
 		})
 
 	})
